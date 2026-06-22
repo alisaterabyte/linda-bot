@@ -262,15 +262,13 @@ async def gpt_json(session: aiohttp.ClientSession, messages: list, temp: float =
     try:
         parsed = json.loads(raw)
     except json.JSONDecodeError:
-        # Try to extract JSON from the response if wrapped in markdown
         import re
         match = re.search(r'\{.*\}', raw, re.DOTALL)
         parsed = json.loads(match.group()) if match else {}
-    # unwrap if GPT wrapped the array in an object
-    if isinstance(parsed, dict):
-        for v in parsed.values():
-            if isinstance(v, list):
-                return v
+    # unwrap only if the TOP LEVEL itself is a list (test questions)
+    # do NOT unwrap dicts that happen to contain lists as values
+    if isinstance(parsed, list):
+        return parsed
     return parsed
 
 
