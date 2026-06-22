@@ -29,8 +29,8 @@ ELEVENLABS_KEY = os.environ["ELEVENLABS_API_KEY"]
 OPENAI_HEADERS = {"Authorization": f"Bearer {OPENAI_KEY}"}
 EL_HEADERS     = {"xi-api-key": ELEVENLABS_KEY, "Content-Type": "application/json"}
 
-EL_VOICE_ID = "XB0fDUnXU5powFXDhCwa"
-EL_MODEL    = "eleven_turbo_v2_5"
+EL_VOICE_ID = "21m00Tcm4TlvDq8ikWAM"  # Rachel
+EL_MODEL    = "eleven_multilingual_v2"
 
 HOURS_24   = 24 * 3600
 CHAT_MODEL = "gpt-4o"
