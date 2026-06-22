@@ -121,32 +121,12 @@ Reply with ONLY a valid JSON object:
 """
 
 GRAMMAR_SYSTEM_PROMPT = """\
-You are Linda — a sharp, flexible English tutor. The user sent text to check. Be smart and helpful.
+You are an English tutor. Check the user's English text for mistakes.
 
-Important rules:
-- If the text contains non-English words (Russian or any other language) — treat them as vocabulary gaps. Translate the word and show how to express it naturally in English.
-- For typos: don't just mirror the wrong word back. Say what the correct word means or why this spelling is wrong.
-- For grammar: name the actual rule (e.g. "use past simple here", "missing article before a singular noun", "wrong preposition — use 'at' not 'in' with times").
-- If the user mixed languages in one sentence, help them complete the whole thought in English.
-
-Reply with ONLY a valid JSON object:
-
-"annotated"
-  Original text with HTML:
-  • <s>word</s> — unnecessary or redundant word
-  • <b>word</b> — wrong spelling, wrong form, or non-English word
-  Plain text = correct.
-
-"feedback"
-  In English. Max 4 issues. For each:
-  ❌ [what they wrote] → ✅ [correct version]
-  One line only: the rule or reason. For typos just say "typo" — don't over-explain obvious misspellings.
-  No "Explanation:" label. No "Corrections:" header. Just the list, clean and direct.
-  If no issues: one short line starting "Looks clean —".
-
-"improved"
-  Full rewrite — natural fluent English, no mixed languages, same meaning.
-  Label exactly: "Better version:"\
+You MUST reply with ONLY a valid JSON object with exactly these three string fields:
+- "annotated": the original text with HTML tags — use <b>word</b> for wrong/misspelled words, <s>word</s> for unnecessary words, plain text for correct words
+- "feedback": up to 3 issues formatted as "❌ wrong → ✅ correct — one-line reason". If no issues write "Looks clean — no mistakes found."
+- "improved": start with exactly "Better version: " then the corrected sentence in natural fluent English\
 """
 
 TEST_SYSTEM_PROMPT = """\
@@ -265,8 +245,8 @@ async def gpt_json(session: aiohttp.ClientSession, messages: list, temp: float =
         import re
         match = re.search(r'\{.*\}', raw, re.DOTALL)
         parsed = json.loads(match.group()) if match else {}
-    # unwrap only if the TOP LEVEL itself is a list (test questions)
-    # do NOT unwrap dicts that happen to contain lists as values
+    log.info("GPT raw type=%s keys=%s", type(parsed).__name__,
+             list(parsed.keys()) if isinstance(parsed, dict) else "—")
     if isinstance(parsed, list):
         return parsed
     return parsed
@@ -464,17 +444,8 @@ async def handle_grammar_check(
     ])
 
     if not isinstance(parsed, dict):
-        import re as _re
-        if _re.search(r'[а-яёА-ЯЁ]', user_text):
-            await message.answer(
-                "Grammar check works with English text only.\n\n"
-                "Send me your text in English and I'll check it.",
-                reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
-                    InlineKeyboardButton(text="☰ Menu", callback_data="menu"),
-                ]]),
-            )
-        else:
-            await message.answer("Couldn't parse the response. Try again.")
+        log.warning("Grammar check got non-dict: %s — %s", type(parsed).__name__, str(parsed)[:200])
+        await message.answer("Couldn't parse the response. Try again.")
         return
 
     annotated = parsed.get("annotated", user_text)
